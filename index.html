@@ -292,9 +292,10 @@ const KEY='croqui-sinistro.v2';
 let store={cases:[],current:null};
 let encurtar=true, moreChips=false, moreOpen=false, zoom=false, showCotas='principais', confirmDel=null, openMenu=null;
 function nowLocal(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); }
+function peritoPadrao(){ try{ return JSON.parse(localStorage.getItem('croqui-perito')||'{}'); }catch(e){ return {}; } }
 function blankCase(){
   return {id:uid(),criado:Date.now(),atualizado:Date.now(),tipo:'colisao',
-    oc:{ident:'',data:nowLocal().slice(0,10),hAcion:'',hInicio:'',hFim:'',local:'',municipio:'',isolado:'',preservado:'',guarnicoes:[],condicoes:'',obs:''},
+    oc:{perito:peritoPadrao().perito,matricula:peritoPadrao().matricula,ident:'',data:nowLocal().slice(0,10),hAcion:'',hInicio:'',hFim:'',local:'',municipio:'',isolado:'',preservado:'',guarnicoes:[],condicoes:'',obs:''},
     via:{nome:'',geom:'reta',curvaMed:'corda',curvaLado:'dentro',raio:'',corda:'',flecha:'',curvaIni:'',curvaFim:'',pista:'simples',largura:'',faixas:'2',canteiro:'',
       acostBorda:'',acostOposto:'',pavimento:'asfalto',centro:'tracejada',perfil:'plano',rampa:'',inter:'nenhuma',interX:'',interLarg:'',interAng:'',interNome:'',modelo:'',rotVolta:'',rotDiam:'',acessos:'',baseLen:'',baseFim:'',borda:'',sentidoPos:'',sentidoNeg:'',rumo:'',rumoDir:''},
     pr:{tipo:'existente',desc:'',km:'',lat:'',lon:'',dist:'',lado:'fora'},elementos:[]};
@@ -376,6 +377,7 @@ function viaSection(){
   const G=c.oc.guarnicoes||[];
   return `<h2 id="sec-via">Ficha</h2>
   <div class="card">
+    <div class="grid2">${field('Perito Criminal','oc.perito',{ph:'Nome'})}${field('Matrícula','oc.matricula',{num:false,ph:'Nº'})}</div>
     <span class="lbl">Natureza</span>
     <div class="chips">${Object.entries(SINISTROS).map(([k,s])=>`<button class="chip" data-tipo="${k}" aria-pressed="${c.tipo===k}">${esc(s.nome)}</button>`).join('')}</div>
     <p class="hint"><b>O que medir.</b> ${esc(S.dica)}</p>
@@ -575,10 +577,10 @@ function croquiSection(){
   <div class="seg" role="group" aria-label="Cotas no desenho">${[['principais','Cotas principais'],['todas','Todas as cotas'],['nenhuma','Sem cotas']].map(([k,t])=>`<button data-cotas="${k}" aria-pressed="${showCotas===k}">${t}</button>`).join('')}</div>
   <div class="paper ${zoom?'zoom':''}" id="paper">${croquiSVG(c,{cotas:showCotas,encurtar})}</div>
   <div class="card"><h3>Compartilhar</h3>
-    <div class="row"><button class="btn primary" id="btnShareCroqui">Croqui e ficha</button><button class="btn" id="btnShareBackup">Cópia de segurança</button></div>
-    <p class="lede">Abre o menu de compartilhar do celular (WhatsApp, e-mail, Drive…). “Croqui e ficha” manda a imagem com a ficha e a tabela em texto. “Cópia de segurança” manda um arquivo .txt com o caso inteiro, para reabrir em “Casos → Importar”.</p></div>
+    <div class="row"><button class="btn primary" id="btnSharePdf">PDF (ficha + croqui)</button><button class="btn" id="btnShareCroqui">Imagem + texto</button><button class="btn" id="btnShareBackup">Cópia de segurança</button></div>
+    <p class="lede">Abre o menu de compartilhar do celular (WhatsApp, e-mail, Drive…). “PDF” manda a ficha, o croqui e a tabela num arquivo só. “Imagem + texto” manda o croqui como imagem e a ficha como mensagem. “Cópia de segurança” manda um arquivo .txt com o caso inteiro, para reabrir em “Casos → Importar”.</p></div>
   <div class="card"><h3>Levar para o laudo</h3>
-    <div class="row"><button class="btn primary" data-exp="png">Imagem PNG</button><button class="btn" data-exp="odg">Editável (.odg)</button><button class="btn" data-exp="svg">SVG</button><button class="btn" id="btnCopyFicha">Copiar ficha</button><button class="btn" id="btnCopy">Copiar tabela</button><button class="btn" data-exp="csv">CSV</button><button class="btn" data-exp="json">Dados (.json)</button></div>
+    <div class="row"><button class="btn primary" data-exp="pdf">PDF</button><button class="btn" data-exp="png">Imagem PNG</button><button class="btn" data-exp="odg">Editável (.odg)</button><button class="btn" data-exp="svg">SVG</button><button class="btn" id="btnCopyFicha">Copiar ficha</button><button class="btn" id="btnCopy">Copiar tabela</button><button class="btn" data-exp="csv">CSV</button><button class="btn" data-exp="json">Dados (.json)</button></div>
     <p class="lede">O .odg abre no LibreOffice Draw com cada linha, veículo e texto editável. “Copiar tabela” cola como tabela no Writer. O .json guarda o caso inteiro.</p></div>
   <h3>Tabela de amarração</h3>
   <div id="tblBox">${tableHTML(c)}</div>`;
@@ -714,7 +716,7 @@ function drawAnimal(H,T,P,sc,a){
 
 function dataBR(d){ const m=String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${m[1]}`:''; }
 function fichaTexto(c){ const o=c.oc, S=SINISTROS[c.tipo]||SINISTROS.outro, sn={sim:'Sim',nao:'Não',aparentemente:'Aparentemente'};
-  const L=['FICHA DE LOCAL — SINISTRO DE TRÂNSITO', o.ident?'Identificação: '+o.ident:'', 'Natureza: '+S.nome,
+  const L=['FICHA DE LOCAL — SINISTRO DE TRÂNSITO', (o.perito||o.matricula)?`Perito Criminal: ${o.perito||'—'} | Matrícula: ${o.matricula||'—'}`:'', o.ident?'Identificação: '+o.ident:'', 'Natureza: '+S.nome,
     `Data: ${dataBR(o.data)||'—'} | Acionamento: ${o.hAcion||'—'} | Início: ${o.hInicio||'—'} | Término: ${o.hFim||'—'}`,
     'Endereço: '+([o.local,o.municipio].filter(Boolean).join(' — ')||'—'),
     c.pr.lat&&c.pr.lon?`Lat/Long (PR): ${c.pr.lat}, ${c.pr.lon}${c.pr.prec?` (±${c.pr.prec} m)`:''}`:'Lat/Long: —',
@@ -1140,6 +1142,88 @@ function svgToOdg(svgStr){
   return zipStore([['mimetype','application/vnd.oasis.opendocument.graphics'],['content.xml',content],['styles.xml',styles],['meta.xml',meta],['META-INF/manifest.xml',manifest]]);
 }
 
+/* ================= PDF (gerado no aparelho, sem biblioteca) ================= */
+const HW={32:278,33:278,34:355,35:556,36:556,37:889,38:667,39:191,40:333,41:333,42:389,43:584,44:278,45:333,46:278,47:278,58:278,59:278,60:584,61:584,62:584,63:556,64:1015,65:667,66:667,67:722,68:722,69:667,70:611,71:778,72:722,73:278,74:500,75:667,76:556,77:833,78:722,79:778,80:667,81:778,82:722,83:667,84:611,85:722,86:667,87:944,88:667,89:667,90:611,91:278,92:278,93:278,94:469,95:556,96:333,97:556,98:556,99:500,100:556,101:556,102:278,103:556,104:556,105:222,106:222,107:500,108:222,109:833,110:556,111:556,112:556,113:556,114:333,115:500,116:278,117:556,118:500,119:722,120:500,121:500,122:500,123:334,124:260,125:334,126:584};
+const CP={0x2014:0x97,0x2013:0x96,0x2022:0x95,0x201C:0x93,0x201D:0x94,0x2018:0x91,0x2019:0x92,0x2026:0x85,0x20AC:0x80};
+function pdfChars(t){ return String(t).replace(/[≈]/g,'~').replace(/→/g,'->').replace(/←/g,'<-').replace(/[−]/g,'-'); }
+function chW(ch,bold){ const k=ch.charCodeAt(0); let w=HW[k]; if(w==null){ if(k>=48&&k<=57) w=556; else if(k===0x2014) w=1000; else if(k===0x2013) w=556; else if(k===0xBA||k===0xAA) w=365; else if(k===0xB0) w=400; else if(k===0xB1||k===0xD7) w=584; else { const b=ch.normalize('NFD')[0]; w=HW[b.charCodeAt(0)]||556; } } return bold?w*1.07:w; }
+function txtW(t,size,bold){ let w=0; for(const ch of pdfChars(t)) w+=chW(ch,bold); return w*size/1000; }
+function pdfStr(t){ let o=''; for(const ch of pdfChars(t)){ let k=ch.charCodeAt(0); if(CP[k]) k=CP[k]; else if(k>255) k=63; if(k===40||k===41||k===92) o+='\\'+ch; else if(k<32||k>126) o+='\\'+k.toString(8).padStart(3,'0'); else o+=ch; } return '('+o+')'; }
+function wrapRuns(runs,size,maxW){ const words=[]; runs.forEach(([t,b])=>String(t).split(/(\s+)/).forEach(w=>{ if(w) words.push([w,b]); }));
+  const lines=[[]]; let w=0; words.forEach(([t,b])=>{ const ww=txtW(t,size,b); if(w+ww>maxW&&lines[lines.length-1].length&&!/^\s+$/.test(t)){ lines.push([]); w=0; } if(!lines[lines.length-1].length&&/^\s+$/.test(t)) return; lines[lines.length-1].push([t,b]); w+=ww; }); return lines; }
+async function croquiJpeg(c){ const svg=croquiSVG(c,{cotas:showCotas,encurtar}); return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{ const k=2, cv=document.createElement('canvas'); cv.width=img.naturalWidth*k; cv.height=img.naturalHeight*k; const g=cv.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,cv.width,cv.height); g.drawImage(img,0,0,cv.width,cv.height);
+    cv.toBlob(async b=>{ if(!b) return rej(new Error('jpg')); res({bytes:new Uint8Array(await b.arrayBuffer()),w:cv.width,h:cv.height}); },'image/jpeg',0.9); }; img.onerror=rej;
+  const m=svg.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(m?svg.replace('<svg ',`<svg width="${m[1]}" height="${m[2]}" `):svg); }); }
+function viaResumo(c){ const v=c.via, L=layout(v), R=curveRadius(v);
+  const tr=v.geom==='rotatoria'?`Rotatória (raio externo ≈ ${fmt(rotR(v),1)} m)`:v.geom==='base'?'Área sem bordo definido (linha de base)':v.geom==='curva'?`Curva${R>0?` (raio ≈ ${fmt(R,0)} m)`:''}`:'Reta';
+  const pf={plano:'plano',aclive:'aclive',declive:'declive'}[v.perfil||'plano']+(v.perfil!=='plano'&&num(v.rampa)?` de ${fmt(num(v.rampa),1)}%`:'');
+  const pv={asfalto:'asfalto',concreto:'concreto',paralelepipedo:'paralelepípedo',terra:'terra/cascalho'}[v.pavimento]||'';
+  return [tr, v.geom==='base'?'':`largura ${fmt(L.w)} m${L.dupla?' por pista':''}`, 'perfil '+pf, pv?'pavimento '+pv:'', v.condicoes||c.oc.condicoes||''].filter(Boolean).join('; '); }
+async function makePdf(c){
+  const enc=new TextEncoder(), o=c.oc, S=SINISTROS[c.tipo]||SINISTROS.outro, sn={sim:'Sim',nao:'Não',aparentemente:'Aparentemente'};
+  const PW=595.28, PH=841.89, M=42, CW=PW-2*M; const pages=[]; let ops=[], y=0;
+  const newPage=()=>{ ops=[]; pages.push(ops); y=PH-M; };
+  const text=(x,yy,t,size,bold)=>ops.push(`BT /${bold?'F2':'F1'} ${size} Tf ${x.toFixed(2)} ${yy.toFixed(2)} Td ${pdfStr(t)} Tj ET`);
+  const need=h=>{ if(y-h<M+24) newPage(); };
+  const center=(t,size,bold,gap=6)=>{ need(size+gap); y-=size; text((PW-txtW(t,size,bold))/2,y,t,size,bold); y-=gap; };
+  const section=t=>{ y-=8; center(t,11,true,8); };
+  const para=(runs,size=10,gap=3)=>{ wrapRuns(runs,size,CW).forEach(line=>{ need(size+gap); y-=size; let x=M; line.forEach(([t,b])=>{ text(x,y,t,size,b); x+=txtW(t,size,b); }); y-=gap; }); };
+  const kv=(pairs)=>para(pairs.flatMap(([k,v],i)=>[[(i?'  |  ':'')+k+': ',true],[v||'—',false]]));
+  newPage();
+  center('FICHA DE LOCAL DE CRIME - SINISTRO DE TRÂNSITO',12,true,6);
+  center(`Perito Criminal: ${o.perito||'—'}  |  Matrícula: ${o.matricula||'—'}`,10,false,4);
+  if(o.ident) center(o.ident,10,false,4);
+  section('DADOS GERAIS');
+  kv([['Natureza',S.nome]]);
+  kv([['Data',dataBR(o.data)],['Acionamento',o.hAcion],['Início',o.hInicio],['Término',o.hFim]]);
+  kv([['Endereço',[o.local,o.municipio].filter(Boolean).join(' — ')]]);
+  kv([['Lat/Long (PR)',c.pr.lat&&c.pr.lon?`${c.pr.lat}, ${c.pr.lon}${c.pr.prec?` (±${c.pr.prec} m)`:''}`:'']]);
+  kv([['Ponto de referência (PR)',[c.pr.desc,c.pr.km?'km '+c.pr.km:''].filter(Boolean).join(', ')]]);
+  section('PRESERVAÇÃO E EQUIPES');
+  kv([['Isolado',sn[o.isolado]],['Preservado',sn[o.preservado]]]);
+  (o.guarnicoes||[]).forEach(g=>kv([[`${g.org} no local`,'Sim'],['VTR',g.vtr],['Cmt/responsável',g.cmt]]));
+  if(!(o.guarnicoes||[]).length) kv([['Equipes no local','']]);
+  section('VIA');
+  para([[viaResumo(c),false]]);
+  section('ELEMENTOS AMARRADOS');
+  const els=c.elementos.filter(e=>e.rotulo);
+  if(els.length) els.forEach(e=>{ const st=TYPES[e.tipo]&&TYPES[e.tipo].veh&&e.estado&&e.estado!=='rodas'?` (${ESTADOS.find(x=>x[0]===e.estado)[1].toLowerCase()})`:''; const L=TYPES[e.tipo]&&TYPES[e.tipo].linha&&markLen(c,e)>0?` — comprimento ${fmt(markLen(c,e))} m`:''; para([[e.rotulo+' — ',true],[elName(c,e)+st+(e.desc&&e.desc!==elName(c,e)?': '+e.desc:'')+L,false]]); });
+  else para([['—',false]]);
+  section('OBSERVAÇÕES GERAIS');
+  para([[o.obs||'—',false]]);
+  /* croqui */
+  const img=await croquiJpeg(c);
+  newPage(); center('CROQUI',12,true,8);
+  const iw=CW, ih=Math.min(iw*img.h/img.w, y-M-30); const iw2=ih*img.w/img.h; const ix=M+(CW-iw2)/2; y-=ih;
+  ops.push(`q ${iw2.toFixed(2)} 0 0 ${ih.toFixed(2)} ${ix.toFixed(2)} ${y.toFixed(2)} cm /Im1 Do Q`); y-=10;
+  /* tabela */
+  const rows=tableRows(c);
+  const cols=[M, M+CW*0.46, M+CW*0.7, M+CW*0.85]; const head=['Elemento','Ponto','Dist. long. (m)','Dist. transv. (m)'];
+  const hdr=()=>{ need(26); y-=12; head.forEach((h,i)=>text(i>=2?cols[i]+(i===2?CW*0.15:CW*0.15)-txtW(h,8.5,true)-4:cols[i],y,h,8.5,true)); y-=4; ops.push(`0.5 w ${M} ${y.toFixed(2)} m ${M+CW} ${y.toFixed(2)} l S`); y-=2; };
+  if(rows.length){ section('TABELA DE AMARRAÇÃO'); para([['Origem no PR. Distância longitudinal medida com odômetro de roda ao longo do bordo de referência; distância transversal perpendicular ao bordo (negativa quando externa à pista).',false]],8.5,2); hdr();
+    rows.forEach(r=>{ if(y-12<M+24){ newPage(); hdr(); } y-=11.5; const cut=(t,w)=>{ let s=String(t); while(txtW(s,8.5,false)>w&&s.length>3) s=s.slice(0,-2); return s===String(t)?s:s+'…'; };
+      text(cols[0],y,cut(`${r.rot} — ${r.tipo}`,CW*0.45),8.5,false); text(cols[1],y,cut(r.ponto,CW*0.23),8.5,false);
+      const a=fmt(r.x), b2=Number.isFinite(r.y)?fmt(r.y):'—'; text(cols[2]+CW*0.15-txtW(a,8.5,false)-4,y,a,8.5,false); text(cols[3]+CW*0.15-txtW(b2,8.5,false)-4,y,b2,8.5,false); }); }
+  /* rodapé */
+  const now=new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+  pages.forEach((pg,i)=>{ const t=`Gerado pelo app Croqui de Sinistro em ${now}   ·   página ${i+1} de ${pages.length}`; pg.push(`BT /F1 7.5 Tf ${((PW-txtW(t,7.5,false))/2).toFixed(2)} 22 Td ${pdfStr(t)} Tj ET`); });
+  /* montagem */
+  const objs=[]; const add=x=>{ objs.push(x); return objs.length; };
+  const cat=add(null), pagesId=add(null), f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'), f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  const imId=add({img});
+  const kids=[];
+  pages.forEach((pg,i)=>{ const st=pg.join('\n'); const cs=add({stream:enc.encode(st)}); const pid=add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> /XObject << /Im1 ${imId} 0 R >> >> /Contents ${cs} 0 R >>`); kids.push(pid); });
+  objs[cat-1]=`<< /Type /Catalog /Pages ${pagesId} 0 R >>`; objs[pagesId-1]=`<< /Type /Pages /Kids [${kids.map(k=>k+' 0 R').join(' ')}] /Count ${kids.length} >>`;
+  const parts=[]; let off=0; const push=b=>{ const u=typeof b==='string'?enc.encode(b):b; parts.push(u); off+=u.length; };
+  push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n'); const xref=[];
+  objs.forEach((ob,i)=>{ xref.push(off); push(`${i+1} 0 obj\n`);
+    if(typeof ob==='string') push(ob+'\n');
+    else if(ob.stream){ push(`<< /Length ${ob.stream.length} >>\nstream\n`); push(ob.stream); push('\nendstream\n'); }
+    else { const im=ob.img; push(`<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`); push(im.bytes); push('\nendstream\n'); }
+    push('endobj\n'); });
+  const xo=off; push(`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+xref.map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${objs.length+1} /Root ${cat} 0 R >>\nstartxref\n${xo}\n%%EOF`);
+  return new Blob(parts,{type:'application/pdf'}); }
+
 /* ================= exportar ================= */
 let downloadsP=null;
 function getDownloads(){ if(!downloadsP){ downloadsP=(window.claude&&typeof window.claude.use==='function')?window.claude.use('downloads').catch(()=>null):Promise.resolve(undefined); } return downloadsP; }
@@ -1161,7 +1245,9 @@ async function compartilhar(kind){
   if(!navigator.share){ toast(window.claude&&window.claude.use?'No app do Claude o compartilhamento é bloqueado. Use o app instalado.':'Este navegador não tem compartilhamento. Use os botões de exportar.'); return; }
   try{
     let data;
-    if(kind==='croqui'){ const png=await svgToPng(croquiSVG(c,{cotas:showCotas,encurtar})); const f=new File([png],b+'.png',{type:'image/png'});
+    if(kind==='pdf'){ const pdf=await makePdf(c); const f=new File([pdf],b+'.pdf',{type:'application/pdf'}); data={files:[f],title:(c.oc.ident||'Ficha de local')+' — PDF'};
+      if(navigator.canShare&&!navigator.canShare({files:[f]})){ toast('Este celular não aceita compartilhar PDF. Use o botão PDF em “Levar para o laudo”.'); return; } }
+    else if(kind==='croqui'){ const png=await svgToPng(croquiSVG(c,{cotas:showCotas,encurtar})); const f=new File([png],b+'.png',{type:'image/png'});
       const txt=fichaTexto(c)+(tabelaTexto(c)?'\n\n'+tabelaTexto(c):''); data={files:[f],title:c.oc.ident||'Croqui de sinistro',text:txt};
       if(navigator.canShare&&!navigator.canShare({files:[f]})) data={title:data.title,text:txt}; }
     else { const j=JSON.stringify({app:'croqui-sinistro',versao:3,caso:c,amarracao:tableRows(c)},null,2); const f=new File([j],b+'-copia.txt',{type:'text/plain'});
@@ -1174,6 +1260,7 @@ async function doExport(kind){
   if(kind==='svg') return saveFile(b+'.svg',croquiSVG(c,{cotas:showCotas,encurtar}),'image/svg+xml');
   if(kind==='csv') return saveFile(b+'.csv',toCSV(c),'text/csv');
   if(kind==='json') return saveFile(b+'.json',JSON.stringify({app:'croqui-sinistro',versao:2,caso:c,amarracao:tableRows(c)},null,2),'application/json');
+  if(kind==='pdf'){ try{ const pdf=await makePdf(c); return saveFile(b+'.pdf',pdf,'application/pdf'); }catch(e){ toast('Não foi possível gerar o PDF.'); return; } }
   if(kind==='odg'){ try{ const blob=svgToOdg(croquiSVG(c,{cotas:showCotas,encurtar})); return saveFile(b+'.odg',blob,'application/vnd.oasis.opendocument.graphics'); }catch(e){ toast('Não foi possível gerar o .odg.'); return; } }
   if(kind==='png'){ try{ const png=await svgToPng(croquiSVG(c,{cotas:showCotas,encurtar})); return saveFile(b+'.png',png,'image/png'); }catch(e){ toast('Não foi possível gerar a imagem. Use o SVG.'); } }
 }
@@ -1200,6 +1287,7 @@ function renderCases(){
 document.addEventListener('input',ev=>{
   const el=ev.target, c=cur();
   if(el.dataset.path==='pr.lat'||el.dataset.path==='pr.lon'){ const ll=parseLatLon(el.value); if(ll){ c.pr.lat=ll[0]; c.pr.lon=ll[1]; c.pr.prec=''; const mu=nearestMun(num(ll[0]),num(ll[1])); if(mu&&!c.oc.municipio) c.oc.municipio=`${mu.nome}-${mu.uf}`; save(); render(); return; } }
+  if(el.dataset.path==='oc.perito'||el.dataset.path==='oc.matricula'){ try{ localStorage.setItem('croqui-perito',JSON.stringify({perito:el.dataset.path==='oc.perito'?el.value:c.oc.perito||'',matricula:el.dataset.path==='oc.matricula'?el.value:c.oc.matricula||''})); }catch(e){} }
   if(el.dataset.path){ setPath(c,el.dataset.path,el.value); save(); redraw();
     if(el.dataset.path==='oc.ident') $('#caseName').textContent=el.value||'Caso sem identificação';
     if(['via.corda','via.flecha','via.raio'].includes(el.dataset.path)){ const R=curveRadius(c.via); const m=document.querySelector('.calc'); if(m) m.textContent=R>0?`Raio da curva: ${fmt(R,0)} m`:curvaMed(c.via)==='raio'?'Digite o raio.':'Estique 20 m de trena na beira, nas duas pontas, e meça do meio da trena até a beira.'; }
@@ -1248,6 +1336,7 @@ document.addEventListener('click',async ev=>{
   if(d.encurtar!==undefined){ encurtar=d.encurtar==='1'; render(); return; }
   if(d.cotas){ showCotas=d.cotas; render(); return; }
   if(d.exp){ doExport(d.exp); return; }
+  if(b.id==='btnSharePdf'){ compartilhar('pdf'); return; }
   if(b.id==='btnShareCroqui'){ compartilhar('croqui'); return; }
   if(b.id==='btnShareBackup'){ gravar(); compartilhar('backup'); return; }
   if(b.id==='btnCopyFicha'){ const t=fichaTexto(c); try{ await navigator.clipboard.writeText(t); toast('Ficha copiada'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='absolute'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); toast(ok?'Ficha copiada':'Não foi possível copiar.'); } return; }
