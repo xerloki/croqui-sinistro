@@ -1,0 +1,31 @@
+{
+  "id": "/croqui-sinistro/?app=calango",
+  "name": "Calango",
+  "short_name": "Calango",
+  "description": "Croqui, amarração e ficha de local de sinistro de trânsito.",
+  "lang": "pt-BR",
+  "start_url": "/croqui-sinistro/?app=calango",
+  "scope": "/croqui-sinistro/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F28C28",
+  "theme_color": "#14181C",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
